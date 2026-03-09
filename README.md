@@ -36,3 +36,16 @@ cd server && npm run dev
 4. Open a pull request targeting `main`.
 
 CI runs automatically on every push and pull request. It validates the client production build and a server smoke test before merge.
+
+## Protected branch policy
+
+`main` is protected for pull-request based changes.
+
+- Required checks:
+  - `Client Build`
+  - `Server Smoke Test`
+- Branches must be up to date before merge.
+- Review conversations should be resolved before merge.
+- Linear history is enforced.
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for the working agreement used by this repository.
