@@ -3,7 +3,7 @@
 ## Branch workflow
 
 1. Branch from `main`.
-2. Use a descriptive branch name such as `codex/job-search-filters` or `codex/fix-auth-validation`.
+2. Use a descriptive branch name such as `feature/job-search-filters` or `fix/auth-validation`.
 3. Run the same checks required by GitHub before pushing:
    - `cd client && npm run ci`
    - `cd server && npm run ci`
