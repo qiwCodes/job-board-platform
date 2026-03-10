@@ -73,7 +73,13 @@ export const formatDate = (value) => {
     return 'N/A';
   }
 
-  return dateFormatter.format(new Date(value));
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return 'N/A';
+  }
+
+  return dateFormatter.format(date);
 };
 
 export const formatRelativeDate = (value) => {

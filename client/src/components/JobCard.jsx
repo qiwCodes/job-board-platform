@@ -9,6 +9,8 @@ import {
 } from '../utils/helpers';
 
 export default function JobCard({ job, footer }) {
+  const description = job?.description || 'No description available';
+
   return (
     <article className="card-base flex h-full flex-col gap-5 transition-transform duration-200 hover:-translate-y-1">
       <div className="flex items-start justify-between gap-4">
@@ -68,7 +70,7 @@ export default function JobCard({ job, footer }) {
       </div>
 
       <p className="body-text flex-1 leading-6">
-        {job.description.length > 220 ? `${job.description.slice(0, 220)}...` : job.description}
+        {description.length > 220 ? `${description.slice(0, 220)}...` : description}
       </p>
 
       <div className="mt-auto flex flex-wrap items-center justify-between gap-3">

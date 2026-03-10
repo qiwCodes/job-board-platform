@@ -1,5 +1,6 @@
 import { createContext, useEffect, useState } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 import { authAPI } from '../services/api';
 import { extractErrorMessage } from '../utils/helpers';
 
@@ -8,6 +9,7 @@ const TOKEN_KEY = 'token';
 export const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
+  const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(() => window.localStorage.getItem(TOKEN_KEY));
   const [loading, setLoading] = useState(true);
@@ -36,7 +38,7 @@ export function AuthProvider({ children }) {
           return;
         }
 
-        window.localStorage.clear();
+        window.localStorage.removeItem(TOKEN_KEY);
         setToken(null);
         setUser(null);
       } finally {
@@ -102,11 +104,11 @@ export function AuthProvider({ children }) {
   };
 
   const logout = () => {
-    window.localStorage.clear();
+    window.localStorage.removeItem(TOKEN_KEY);
     setToken(null);
     setUser(null);
     toast.success('You have been logged out.');
-    window.location.assign('/');
+    navigate('/', { replace: true });
   };
 
   return (

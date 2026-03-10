@@ -16,6 +16,7 @@ const {
 const { applyToJob } = require('../controllers/applicationController');
 
 const router = express.Router();
+const JOB_STATUS_VALUES = ['active', 'closed', 'draft'];
 
 const jobIdValidator = [
   param('id')
@@ -106,8 +107,8 @@ const createJobValidators = [
     .optional()
     .isString()
     .withMessage('status must be a string.')
-    .isLength({ max: 20 })
-    .withMessage('status must not exceed 20 characters.'),
+    .isIn(JOB_STATUS_VALUES)
+    .withMessage('status is invalid.'),
 ];
 
 const updateJobValidators = [
@@ -152,8 +153,8 @@ const updateJobValidators = [
     .optional()
     .isString()
     .withMessage('status must be a string.')
-    .isLength({ max: 20 })
-    .withMessage('status must not exceed 20 characters.'),
+    .isIn(JOB_STATUS_VALUES)
+    .withMessage('status is invalid.'),
 ];
 
 const applyValidators = [

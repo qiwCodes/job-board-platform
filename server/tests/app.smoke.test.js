@@ -11,9 +11,13 @@ process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-jwt-secret';
 const app = require('../src/app');
 
 const startServer = () =>
-  new Promise((resolve) => {
+  new Promise((resolve, reject) => {
     const server = http.createServer(app);
-    server.listen(0, '127.0.0.1', () => resolve(server));
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', () => {
+      server.removeListener('error', reject);
+      resolve(server);
+    });
   });
 
 const stopServer = (server) =>
