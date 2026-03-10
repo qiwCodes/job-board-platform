@@ -12,9 +12,9 @@ export default function LoadingSpinner({
   return (
     <div className={wrapperClasses}>
       <div
-        className={`${spinnerSize} animate-spin rounded-full border-4 border-slate-200 border-t-emerald-500`}
+        className={`${spinnerSize} animate-spin rounded-full border-4 border-indigo-600 border-t-transparent`}
       />
-      <p className="text-sm font-medium text-slate-500">{label}</p>
+      <p className="text-sm font-medium text-gray-500">{label}</p>
     </div>
   );
 }

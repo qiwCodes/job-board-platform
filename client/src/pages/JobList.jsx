@@ -1,25 +1,23 @@
 import { Search } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import EmptyState from '../components/EmptyState';
+import ErrorMessage from '../components/ErrorMessage';
 import JobCard from '../components/JobCard';
 import LoadingSpinner from '../components/LoadingSpinner';
+import Pagination from '../components/Pagination';
 import { jobsAPI } from '../services/api';
-import { employmentTypeOptions, extractErrorMessage } from '../utils/helpers';
-
-const initialFilters = {
-  search: '',
-  location: '',
-  type: '',
-  page: 1,
-};
+import { buildJobSearchParams, employmentTypeOptions, extractErrorMessage, parseJobSearchParams } from '../utils/helpers';
 
 export default function JobList() {
-  const [filters, setFilters] = useState(initialFilters);
-  const [draftFilters, setDraftFilters] = useState(initialFilters);
+  const [searchParams, setSearchParams] = useSearchParams();
   const [jobs, setJobs] = useState([]);
   const [pagination, setPagination] = useState({ total: 0, page: 1, totalPages: 0 });
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const filters = parseJobSearchParams(searchParams);
+  const typesKey = filters.types.join(',');
 
   useEffect(() => {
     let isMounted = true;
@@ -31,7 +29,9 @@ export default function JobList() {
         const response = await jobsAPI.getAll({
           search: filters.search || undefined,
           location: filters.location || undefined,
-          type: filters.type || undefined,
+          type: typesKey || undefined,
+          salary_min: filters.salaryMin || undefined,
+          salary_max: filters.salaryMax || undefined,
           page: filters.page,
           limit: 9,
         });
@@ -42,7 +42,7 @@ export default function JobList() {
 
         setJobs(response.data.data.jobs);
         setPagination(response.data.data.pagination);
-        setError('');
+        setError(null);
       } catch (err) {
         if (isMounted) {
           setError(extractErrorMessage(err, 'Unable to load jobs.'));
@@ -59,146 +59,195 @@ export default function JobList() {
     return () => {
       isMounted = false;
     };
-  }, [filters]);
+  }, [
+    filters.location,
+    filters.page,
+    filters.salaryMax,
+    filters.salaryMin,
+    filters.search,
+    typesKey,
+    retryCount,
+  ]);
 
-  const handleSubmit = (event) => {
-    event.preventDefault();
-    setFilters((current) => ({
-      ...current,
-      search: draftFilters.search.trim(),
-      location: draftFilters.location.trim(),
-      type: draftFilters.type,
+  const updateFilters = (updates, options = {}) => {
+    const nextFilters = {
+      ...filters,
+      ...updates,
+      page: updates.page ?? (options.keepPage ? filters.page : 1),
+    };
+
+    setSearchParams(buildJobSearchParams(nextFilters), { replace: true });
+  };
+
+  const handleCheckboxChange = (value, checked) => {
+    const nextTypes = checked
+      ? [...filters.types, value]
+      : filters.types.filter((item) => item !== value);
+
+    updateFilters({ types: nextTypes });
+  };
+
+  const clearFilters = () => {
+    setSearchParams(buildJobSearchParams({
+      search: '',
+      location: '',
+      types: [],
+      salaryMin: '',
+      salaryMax: '',
       page: 1,
-    }));
-  };
-
-  const handleChange = (event) => {
-    const { name, value } = event.target;
-    setDraftFilters((current) => ({ ...current, [name]: value }));
-  };
-
-  const changePage = (nextPage) => {
-    setFilters((current) => ({ ...current, page: nextPage }));
+    }), { replace: true });
   };
 
   return (
     <div className="grid gap-8">
       <div className="flex flex-col gap-3">
-        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-600">Job discovery</p>
-        <h1 className="text-4xl font-black tracking-tight text-slate-900">Browse active opportunities</h1>
-        <p className="max-w-2xl text-base leading-7 text-slate-600">
-          Filter by keyword, location, and employment type. The list reflects only active roles exposed by the backend.
+        <p className="label-text text-indigo-600">Job Discovery</p>
+        <h1 className="page-title">Browse active opportunities</h1>
+        <p className="body-text max-w-2xl leading-7">
+          Narrow the jobs board by keyword, location, employment type, and salary range. Filters
+          are synced to the URL so results can be shared or revisited.
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="grid gap-4 rounded-[2rem] border border-slate-200 bg-white p-6 shadow-soft lg:grid-cols-[1.2fr_1fr_0.8fr_auto]">
-        <label className="grid gap-2 text-sm font-medium text-slate-700">
-          Search
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input
-              name="search"
-              value={draftFilters.search}
-              onChange={handleChange}
-              className="w-full rounded-2xl border border-slate-200 bg-stone-50 py-3 pl-11 pr-4 text-sm text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100"
-              placeholder="Frontend, designer, data..."
-            />
-          </div>
-        </label>
-
-        <label className="grid gap-2 text-sm font-medium text-slate-700">
-          Location
-          <input
-            name="location"
-            value={draftFilters.location}
-            onChange={handleChange}
-            className="w-full rounded-2xl border border-slate-200 bg-stone-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100"
-            placeholder="Bangkok, Remote..."
-          />
-        </label>
-
-        <label className="grid gap-2 text-sm font-medium text-slate-700">
-          Type
-          <select
-            name="type"
-            value={draftFilters.type}
-            onChange={handleChange}
-            className="w-full rounded-2xl border border-slate-200 bg-stone-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100"
+      <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)] lg:items-start">
+        <aside className="card-base lg:sticky lg:top-24">
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              updateFilters({ page: 1 }, { keepPage: true });
+            }}
+            className="grid gap-5"
           >
-            {employmentTypeOptions.map((option) => (
-              <option key={option.value || 'all'} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
+            <div className="grid gap-2">
+              <label className="label-text">Search</label>
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <input
+                  value={filters.search}
+                  onChange={(event) => updateFilters({ search: event.target.value })}
+                  className="input-base pl-10"
+                  placeholder="Frontend, designer, data"
+                />
+              </div>
+            </div>
 
-        <button
-          type="submit"
-          className="inline-flex items-center justify-center rounded-2xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 lg:mt-7"
-        >
-          Search jobs
-        </button>
-      </form>
+            <div className="grid gap-2">
+              <label className="label-text">Location</label>
+              <input
+                value={filters.location}
+                onChange={(event) => updateFilters({ location: event.target.value })}
+                className="input-base"
+                placeholder="Bangkok, Remote"
+              />
+            </div>
 
-      {loading ? <LoadingSpinner label="Loading jobs..." /> : null}
+            <div className="grid gap-3">
+              <p className="label-text">Employment Type</p>
+              <div className="grid gap-3">
+                {employmentTypeOptions.map((option) => (
+                  <label key={option.value} className="flex items-center gap-3 text-sm text-gray-600">
+                    <input
+                      type="checkbox"
+                      checked={filters.types.includes(option.value)}
+                      onChange={(event) => handleCheckboxChange(option.value, event.target.checked)}
+                      className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <span>{option.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
 
-      {!loading && error ? (
-        <EmptyState
-          title="We could not load the jobs board"
-          description={error}
-          action={
-            <button
-              type="button"
-              onClick={() => setFilters((current) => ({ ...current }))}
-              className="inline-flex rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white"
-            >
-              Retry
-            </button>
-          }
-        />
-      ) : null}
+            <div className="grid gap-3">
+              <p className="label-text">Salary Range</p>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+                <input
+                  type="number"
+                  min="0"
+                  value={filters.salaryMin}
+                  onChange={(event) => updateFilters({ salaryMin: event.target.value })}
+                  className="input-base"
+                  placeholder="Min"
+                />
+                <input
+                  type="number"
+                  min="0"
+                  value={filters.salaryMax}
+                  onChange={(event) => updateFilters({ salaryMax: event.target.value })}
+                  className="input-base"
+                  placeholder="Max"
+                />
+              </div>
+            </div>
 
-      {!loading && !error && jobs.length === 0 ? (
-        <EmptyState
-          title="No jobs matched these filters"
-          description="Try broadening the keyword search or clearing one of the filters."
-        />
-      ) : null}
-
-      {!loading && !error && jobs.length > 0 ? (
-        <>
-          <div className="grid gap-5 lg:grid-cols-2 xl:grid-cols-3">
-            {jobs.map((job) => (
-              <JobCard key={job.id} job={job} />
-            ))}
-          </div>
-
-          <div className="flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-soft sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-slate-600">
-              Showing page {pagination.page} of {pagination.totalPages || 1} with {pagination.total} active roles.
-            </p>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                disabled={pagination.page <= 1}
-                onClick={() => changePage(pagination.page - 1)}
-                className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Previous
+            <div className="flex flex-wrap items-center gap-3">
+              <button type="submit" className="btn-primary">
+                Apply Filters
               </button>
-              <button
-                type="button"
-                disabled={!pagination.totalPages || pagination.page >= pagination.totalPages}
-                onClick={() => changePage(pagination.page + 1)}
-                className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Next
+              <button type="button" onClick={clearFilters} className="text-sm font-medium text-gray-500 hover:text-indigo-600">
+                Clear
               </button>
             </div>
+          </form>
+        </aside>
+
+        <section className="grid gap-6">
+          <div className="card-base">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="section-title">
+                  Showing {pagination.total} job{pagination.total === 1 ? '' : 's'}
+                </p>
+                <p className="body-text mt-1">
+                  Page {pagination.page} of {pagination.totalPages || 1}
+                </p>
+              </div>
+            </div>
           </div>
-        </>
-      ) : null}
+
+          {loading ? <LoadingSpinner label="Loading jobs..." /> : null}
+
+          {!loading && error ? (
+            <div className="grid gap-4">
+              <ErrorMessage message={error} />
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setRetryCount((current) => current + 1)}
+                  className="btn-primary"
+                >
+                  Retry
+                </button>
+              </div>
+            </div>
+          ) : null}
+
+          {!loading && !error && jobs.length === 0 ? (
+            <EmptyState
+              title="No jobs matched these filters"
+              message="Try broadening your search or clearing one of the filters to see more opportunities."
+            />
+          ) : null}
+
+          {!loading && !error && jobs.length > 0 ? (
+            <>
+              <div className="grid gap-5 xl:grid-cols-2">
+                {jobs.map((job) => (
+                  <JobCard key={job.id} job={job} />
+                ))}
+              </div>
+
+              <div className="card-base">
+                <Pagination
+                  currentPage={pagination.page}
+                  totalPages={pagination.totalPages}
+                  onPageChange={(page) => updateFilters({ page }, { keepPage: true })}
+                />
+              </div>
+            </>
+          ) : null}
+        </section>
+      </div>
     </div>
   );
 }

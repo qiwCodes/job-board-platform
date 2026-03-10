@@ -39,8 +39,36 @@ test('returns a JSON 404 for unknown routes', async () => {
     assert.equal(response.status, 404);
     assert.deepEqual(payload, {
       success: false,
-      message: 'Route not found.',
+      message: 'Route not found',
     });
+  } finally {
+    await stopServer(server);
+  }
+});
+
+test('returns a JSON 422 with validation errors', async () => {
+  const server = await startServer();
+  const address = server.address();
+
+  try {
+    const response = await fetch(`http://127.0.0.1:${address.port}/api/auth/register`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({}),
+    });
+    const payload = await response.json();
+
+    assert.equal(response.status, 422);
+    assert.equal(payload.success, false);
+    assert.equal(payload.message, 'Validation failed.');
+    assert.deepEqual(payload.errors, [
+      'name is required.',
+      'email is required.',
+      'password is required.',
+      'role is required.',
+    ]);
   } finally {
     await stopServer(server);
   }

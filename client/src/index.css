@@ -3,12 +3,19 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    color-scheme: light;
+  }
+
   html {
     scroll-behavior: smooth;
   }
 
   body {
-    @apply min-h-screen bg-stone-50 text-slate-900 antialiased;
+    @apply min-h-screen bg-gray-50 text-gray-900 antialiased;
+    background-image:
+      radial-gradient(circle at top left, rgba(99, 102, 241, 0.12), transparent 34%),
+      radial-gradient(circle at top right, rgba(165, 180, 252, 0.18), transparent 28%);
   }
 
   #root {
@@ -16,6 +23,60 @@
   }
 
   ::selection {
-    @apply bg-amber-200 text-slate-900;
+    @apply bg-indigo-200 text-gray-900;
+  }
+}
+
+@layer components {
+  .page-title {
+    @apply text-3xl font-bold text-gray-900;
+  }
+
+  .section-title {
+    @apply text-xl font-semibold text-gray-800;
+  }
+
+  .card-title {
+    @apply text-lg font-medium text-gray-900;
+  }
+
+  .body-text {
+    @apply text-sm text-gray-600;
+  }
+
+  .label-text {
+    @apply text-xs font-medium uppercase tracking-wide text-gray-500;
+  }
+
+  .card-base {
+    @apply rounded-xl border border-gray-200 bg-white p-6 shadow-sm;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .input-base {
+    @apply w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500;
+  }
+
+  .table-shell {
+    @apply overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm;
+  }
+
+  .table-head {
+    @apply bg-gray-50 text-left text-xs font-medium uppercase tracking-wide text-gray-500;
+  }
+
+  .table-row {
+    @apply border-t border-gray-200;
+  }
+
+  .table-cell {
+    @apply px-4 py-4 text-sm text-gray-600;
   }
 }

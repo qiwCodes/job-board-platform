@@ -1,24 +1,10 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { validationResult } = require('express-validator');
 const { pool } = require('../config/database');
 
 const ALLOWED_REGISTER_ROLES = new Set(['applicant', 'company']);
 const JWT_EXPIRES_IN = '7d';
 const PASSWORD_SALT_ROUNDS = 12;
-
-const sendValidationError = (req, res) => {
-  const errors = validationResult(req);
-
-  if (errors.isEmpty()) {
-    return false;
-  }
-
-  return res.status(400).json({
-    success: false,
-    message: errors.array({ onlyFirstError: true })[0].msg,
-  });
-};
 
 const buildUserPayload = (user) => ({
   id: user.id,
@@ -38,11 +24,7 @@ const signToken = (user) => {
   });
 };
 
-const register = async (req, res) => {
-  if (sendValidationError(req, res)) {
-    return;
-  }
-
+const register = async (req, res, next) => {
   const name = req.body.name.trim();
   const email = req.body.email.trim().toLowerCase();
   const password = req.body.password;
@@ -125,21 +107,13 @@ const register = async (req, res) => {
       });
     }
 
-    console.error('register error:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Unable to register user at this time.',
-    });
+    return next(error);
   } finally {
     client.release();
   }
 };
 
-const login = async (req, res) => {
-  if (sendValidationError(req, res)) {
-    return;
-  }
-
+const login = async (req, res, next) => {
   const email = req.body.email.trim().toLowerCase();
   const password = req.body.password;
 
@@ -190,11 +164,7 @@ const login = async (req, res) => {
       message: 'Login successful.',
     });
   } catch (error) {
-    console.error('login error:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Unable to login at this time.',
-    });
+    return next(error);
   }
 };
 

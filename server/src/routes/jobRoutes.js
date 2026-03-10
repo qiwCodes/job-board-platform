@@ -3,8 +3,10 @@ const { body, param, query } = require('express-validator');
 const authenticate = require('../middleware/authMiddleware');
 const requireRole = require('../middleware/roleMiddleware');
 const { uploadResume } = require('../middleware/uploadMiddleware');
+const validateRequest = require('../middleware/validateRequest');
 const {
   getAllJobs,
+  getCompanyJobs,
   getJobById,
   createJob,
   updateJob,
@@ -53,6 +55,18 @@ const listJobsValidators = [
     .optional()
     .isInt({ min: 1, max: 100 })
     .withMessage('limit must be between 1 and 100.'),
+];
+
+const companyJobsValidators = [
+  query('limit')
+    .optional()
+    .isInt({ min: 1, max: 100 })
+    .withMessage('limit must be between 1 and 100.'),
+  query('status')
+    .optional()
+    .isString()
+    .withMessage('status must be a string.')
+    .trim(),
 ];
 
 const createJobValidators = [
@@ -149,20 +163,23 @@ const applyValidators = [
     .withMessage('cover_letter must be a string.'),
 ];
 
-router.get('/', listJobsValidators, getAllJobs);
-router.get('/:id/applications', authenticate, requireRole('company'), jobIdValidator, getJobApplicants);
+router.get('/', listJobsValidators, validateRequest, getAllJobs);
+router.get('/company/me', authenticate, requireRole('company'), companyJobsValidators, validateRequest, getCompanyJobs);
+router.get('/:id/applications', authenticate, requireRole('company'), jobIdValidator, validateRequest, getJobApplicants);
 router.post(
   '/:id/apply',
   authenticate,
   requireRole('applicant'),
   jobIdValidator,
+  validateRequest,
   uploadResume,
   applyValidators,
+  validateRequest,
   applyToJob,
 );
-router.get('/:id', jobIdValidator, getJobById);
-router.post('/', authenticate, requireRole('company'), createJobValidators, createJob);
-router.put('/:id', authenticate, requireRole('company'), updateJobValidators, updateJob);
-router.delete('/:id', authenticate, requireRole('company'), jobIdValidator, deleteJob);
+router.get('/:id', jobIdValidator, validateRequest, getJobById);
+router.post('/', authenticate, requireRole('company'), createJobValidators, validateRequest, createJob);
+router.put('/:id', authenticate, requireRole('company'), updateJobValidators, validateRequest, updateJob);
+router.delete('/:id', authenticate, requireRole('company'), jobIdValidator, validateRequest, deleteJob);
 
 module.exports = router;

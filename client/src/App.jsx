@@ -1,4 +1,4 @@
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import AppLayout from './components/AppLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 import { AuthProvider } from './context/AuthContext';
@@ -11,6 +11,7 @@ import JobList from './pages/JobList';
 import Login from './pages/Login';
 import ManageJobs from './pages/ManageJobs';
 import MyApplications from './pages/MyApplications';
+import NotFound from './pages/NotFound';
 import PostJob from './pages/PostJob';
 import ProfilePage from './pages/ProfilePage';
 import Register from './pages/Register';
@@ -41,8 +42,7 @@ export default function App() {
               <Route path="/company/jobs" element={<ManageJobs />} />
               <Route path="/company/jobs/:id/applicants" element={<ApplicantsList />} />
             </Route>
-
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<NotFound />} />
           </Route>
         </Routes>
       </BrowserRouter>

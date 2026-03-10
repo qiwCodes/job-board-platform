@@ -3,6 +3,9 @@ const currencyFormatter = new Intl.NumberFormat('en-US', {
   currency: 'USD',
   maximumFractionDigits: 0,
 });
+const relativeTimeFormatter = new Intl.RelativeTimeFormat('en', {
+  numeric: 'auto',
+});
 
 const dateFormatter = new Intl.DateTimeFormat('en-US', {
   month: 'short',
@@ -51,7 +54,7 @@ export const extractErrorMessage = (error, fallbackMessage = 'Something went wro
 
 export const formatCurrencyRange = (minimum, maximum) => {
   if (minimum == null && maximum == null) {
-    return 'Compensation not disclosed';
+    return 'Not specified';
   }
 
   if (minimum != null && maximum != null) {
@@ -73,13 +76,53 @@ export const formatDate = (value) => {
   return dateFormatter.format(new Date(value));
 };
 
+export const formatRelativeDate = (value) => {
+  if (!value) {
+    return 'Recently';
+  }
+
+  const date = new Date(value);
+  const deltaInSeconds = Math.round((date.getTime() - Date.now()) / 1000);
+  const absSeconds = Math.abs(deltaInSeconds);
+
+  if (absSeconds < 60) {
+    return relativeTimeFormatter.format(deltaInSeconds, 'second');
+  }
+
+  if (absSeconds < 3600) {
+    return relativeTimeFormatter.format(Math.round(deltaInSeconds / 60), 'minute');
+  }
+
+  if (absSeconds < 86400) {
+    return relativeTimeFormatter.format(Math.round(deltaInSeconds / 3600), 'hour');
+  }
+
+  if (absSeconds < 604800) {
+    return relativeTimeFormatter.format(Math.round(deltaInSeconds / 86400), 'day');
+  }
+
+  if (absSeconds < 2629800) {
+    return relativeTimeFormatter.format(Math.round(deltaInSeconds / 604800), 'week');
+  }
+
+  if (absSeconds < 31557600) {
+    return relativeTimeFormatter.format(Math.round(deltaInSeconds / 2629800), 'month');
+  }
+
+  return relativeTimeFormatter.format(Math.round(deltaInSeconds / 31557600), 'year');
+};
+
 export const employmentTypeOptions = [
-  { value: '', label: 'All types' },
   { value: 'full-time', label: 'Full-time' },
   { value: 'part-time', label: 'Part-time' },
   { value: 'contract', label: 'Contract' },
   { value: 'internship', label: 'Internship' },
   { value: 'remote', label: 'Remote' },
+];
+
+export const employmentTypeFilterOptions = [
+  { value: '', label: 'All types' },
+  ...employmentTypeOptions,
 ];
 
 export const applicationStatusOptions = [
@@ -88,6 +131,12 @@ export const applicationStatusOptions = [
   { value: 'interview', label: 'Interview' },
   { value: 'rejected', label: 'Rejected' },
   { value: 'hired', label: 'Hired' },
+];
+
+export const jobStatusOptions = [
+  { value: 'active', label: 'Active' },
+  { value: 'closed', label: 'Closed' },
+  { value: 'draft', label: 'Draft' },
 ];
 
 export const getRouteForRole = (role) => {
@@ -117,4 +166,71 @@ export const createJobPayload = (formState, options = {}) => {
   return Object.fromEntries(
     Object.entries(payload).filter(([, value]) => value !== undefined),
   );
+};
+
+export const formatEmploymentType = (value) => {
+  if (!value) {
+    return 'Not specified';
+  }
+
+  return value
+    .split('-')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+};
+
+export const getInitials = (value) =>
+  String(value || 'JB')
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join('');
+
+export const splitLines = (value) =>
+  String(value || '')
+    .split(/\r?\n/)
+    .map((line) => line.replace(/^[\-\u2022]\s*/, '').trim())
+    .filter(Boolean);
+
+export const parseJobSearchParams = (searchParams) => ({
+  search: searchParams.get('search') || '',
+  location: searchParams.get('location') || '',
+  types: (searchParams.get('type') || '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean),
+  salaryMin: searchParams.get('salary_min') || '',
+  salaryMax: searchParams.get('salary_max') || '',
+  page: Math.max(Number.parseInt(searchParams.get('page') || '1', 10) || 1, 1),
+});
+
+export const buildJobSearchParams = (filters) => {
+  const params = new URLSearchParams();
+
+  if (filters.search?.trim()) {
+    params.set('search', filters.search.trim());
+  }
+
+  if (filters.location?.trim()) {
+    params.set('location', filters.location.trim());
+  }
+
+  if (filters.types?.length) {
+    params.set('type', filters.types.join(','));
+  }
+
+  if (filters.salaryMin !== '' && filters.salaryMin != null) {
+    params.set('salary_min', String(filters.salaryMin));
+  }
+
+  if (filters.salaryMax !== '' && filters.salaryMax != null) {
+    params.set('salary_max', String(filters.salaryMax));
+  }
+
+  if (filters.page && filters.page > 1) {
+    params.set('page', String(filters.page));
+  }
+
+  return params;
 };

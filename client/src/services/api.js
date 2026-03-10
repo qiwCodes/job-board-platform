@@ -48,6 +48,7 @@ export const authAPI = {
 
 export const jobsAPI = {
   getAll: (params) => api.get('/jobs', { params }),
+  getMine: (params) => api.get('/jobs/company/me', { params }),
   getById: (id) => api.get(`/jobs/${id}`),
   create: (data) => api.post('/jobs', data),
   update: (id, data) => api.put(`/jobs/${id}`, data),
@@ -63,7 +64,7 @@ export const applicationsAPI = {
     }),
   getMine: () => api.get('/applications/me'),
   getJobApplicants: (jobId) => api.get(`/jobs/${jobId}/applications`),
-  updateStatus: (id, status) => api.put(`/applications/company/${id}/status`, { status }),
+  updateStatus: (id, status) => api.patch(`/applications/company/${id}/status`, { status }),
 };
 
 export default api;

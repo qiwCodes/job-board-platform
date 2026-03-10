@@ -1,5 +1,4 @@
 const path = require('path');
-const { validationResult } = require('express-validator');
 const { pool } = require('../config/database');
 
 const VALID_APPLICATION_STATUSES = new Set([
@@ -9,19 +8,6 @@ const VALID_APPLICATION_STATUSES = new Set([
   'rejected',
   'hired',
 ]);
-
-const sendValidationError = (req, res) => {
-  const errors = validationResult(req);
-
-  if (errors.isEmpty()) {
-    return false;
-  }
-
-  return res.status(400).json({
-    success: false,
-    message: errors.array({ onlyFirstError: true })[0].msg,
-  });
-};
 
 const getJobOwnership = async (jobId) => {
   const result = await pool.query(
@@ -62,11 +48,7 @@ const getApplicationOwnership = async (applicationId) => {
   return result.rows[0] || null;
 };
 
-const applyToJob = async (req, res) => {
-  if (sendValidationError(req, res)) {
-    return;
-  }
-
+const applyToJob = async (req, res, next) => {
   if (!req.file) {
     return res.status(400).json({
       success: false,
@@ -147,15 +129,11 @@ const applyToJob = async (req, res) => {
       });
     }
 
-    console.error('applyToJob error:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Unable to submit application at this time.',
-    });
+    return next(error);
   }
 };
 
-const getMyApplications = async (req, res) => {
+const getMyApplications = async (req, res, next) => {
   try {
     const result = await pool.query(
       `
@@ -188,19 +166,11 @@ const getMyApplications = async (req, res) => {
       message: 'Applications retrieved successfully.',
     });
   } catch (error) {
-    console.error('getMyApplications error:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Unable to retrieve applications at this time.',
-    });
+    return next(error);
   }
 };
 
-const updateApplicationStatus = async (req, res) => {
-  if (sendValidationError(req, res)) {
-    return;
-  }
-
+const updateApplicationStatus = async (req, res, next) => {
   const status = req.body.status.trim().toLowerCase();
 
   if (!VALID_APPLICATION_STATUSES.has(status)) {
@@ -252,11 +222,7 @@ const updateApplicationStatus = async (req, res) => {
       message: 'Application status updated successfully.',
     });
   } catch (error) {
-    console.error('updateApplicationStatus error:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Unable to update application status at this time.',
-    });
+    return next(error);
   }
 };
 

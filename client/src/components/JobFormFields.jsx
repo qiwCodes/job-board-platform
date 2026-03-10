@@ -1,131 +1,147 @@
-import { employmentTypeOptions } from '../utils/helpers';
+import { employmentTypeOptions, jobStatusOptions } from '../utils/helpers';
 
-const inputClasses =
-  'w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100';
+function FieldError({ message }) {
+  if (!message) {
+    return null;
+  }
+
+  return <p className="mt-1 text-sm text-red-500">{message}</p>;
+}
 
 export default function JobFormFields({
-  formState,
-  onChange,
+  register,
+  errors = {},
   disabled = false,
   includeStatus = false,
 }) {
   return (
     <div className="grid gap-5">
       <div className="grid gap-5 md:grid-cols-2">
-        <label className="grid gap-2 text-sm font-medium text-slate-700">
-          Job title
+        <label className="grid gap-2">
+          <span className="label-text">Title *</span>
           <input
-            required
-            name="title"
-            value={formState.title}
-            onChange={onChange}
             disabled={disabled}
-            className={inputClasses}
+            className="input-base"
             placeholder="Senior Product Designer"
+            {...register('title', {
+              required: 'Title is required.',
+              maxLength: {
+                value: 255,
+                message: 'Title must be 255 characters or fewer.',
+              },
+            })}
           />
+          <FieldError message={errors.title?.message} />
         </label>
 
-        <label className="grid gap-2 text-sm font-medium text-slate-700">
-          Location
+        <label className="grid gap-2">
+          <span className="label-text">Location *</span>
           <input
-            name="location"
-            value={formState.location}
-            onChange={onChange}
             disabled={disabled}
-            className={inputClasses}
+            className="input-base"
             placeholder="Bangkok or remote"
+            {...register('location', {
+              required: 'Location is required.',
+              maxLength: {
+                value: 100,
+                message: 'Location must be 100 characters or fewer.',
+              },
+            })}
           />
+          <FieldError message={errors.location?.message} />
         </label>
       </div>
 
-      <label className="grid gap-2 text-sm font-medium text-slate-700">
-        Description
+      <label className="grid gap-2">
+        <span className="label-text">Description *</span>
         <textarea
-          required
-          name="description"
-          value={formState.description}
-          onChange={onChange}
           disabled={disabled}
           rows={6}
-          className={`${inputClasses} resize-none`}
+          className="input-base resize-none"
           placeholder="Describe the role, team, and impact."
+          {...register('description', {
+            required: 'Description is required.',
+          })}
         />
+        <FieldError message={errors.description?.message} />
       </label>
 
-      <label className="grid gap-2 text-sm font-medium text-slate-700">
-        Requirements
+      <label className="grid gap-2">
+        <span className="label-text">Requirements</span>
         <textarea
-          name="requirements"
-          value={formState.requirements}
-          onChange={onChange}
           disabled={disabled}
           rows={5}
-          className={`${inputClasses} resize-none`}
+          className="input-base resize-none"
           placeholder="List the must-have skills and experience."
+          {...register('requirements')}
         />
+        <FieldError message={errors.requirements?.message} />
       </label>
 
       <div className="grid gap-5 md:grid-cols-3">
-        <label className="grid gap-2 text-sm font-medium text-slate-700">
-          Employment type
+        <label className="grid gap-2">
+          <span className="label-text">Employment Type *</span>
           <select
-            name="employment_type"
-            value={formState.employment_type}
-            onChange={onChange}
             disabled={disabled}
-            className={inputClasses}
+            className="input-base"
+            {...register('employment_type', {
+              required: 'Employment type is required.',
+            })}
           >
+            <option value="">Select employment type</option>
             {employmentTypeOptions.map((option) => (
-              <option key={option.value || 'all'} value={option.value}>
+              <option key={option.value} value={option.value}>
                 {option.label}
               </option>
             ))}
           </select>
+          <FieldError message={errors.employment_type?.message} />
         </label>
 
-        <label className="grid gap-2 text-sm font-medium text-slate-700">
-          Salary min
+        <label className="grid gap-2">
+          <span className="label-text">Salary Min</span>
           <input
-            name="salary_min"
             type="number"
             min="0"
-            value={formState.salary_min}
-            onChange={onChange}
             disabled={disabled}
-            className={inputClasses}
+            className="input-base"
             placeholder="50000"
+            {...register('salary_min')}
           />
+          <FieldError message={errors.salary_min?.message} />
         </label>
 
-        <label className="grid gap-2 text-sm font-medium text-slate-700">
-          Salary max
+        <label className="grid gap-2">
+          <span className="label-text">Salary Max</span>
           <input
-            name="salary_max"
             type="number"
             min="0"
-            value={formState.salary_max}
-            onChange={onChange}
             disabled={disabled}
-            className={inputClasses}
+            className="input-base"
             placeholder="80000"
+            {...register('salary_max')}
           />
+          <FieldError message={errors.salary_max?.message} />
         </label>
       </div>
 
       {includeStatus ? (
-        <label className="grid gap-2 text-sm font-medium text-slate-700">
-          Status
+        <label className="grid gap-2">
+          <span className="label-text">Status</span>
           <select
-            name="status"
-            value={formState.status}
-            onChange={onChange}
             disabled={disabled}
-            className={inputClasses}
+            className="input-base"
+            {...register('status', {
+              required: 'Status is required.',
+            })}
           >
-            <option value="active">Active</option>
-            <option value="closed">Closed</option>
-            <option value="draft">Draft</option>
+            {jobStatusOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
+          <FieldError message={errors.status?.message} />
         </label>
       ) : null}
     </div>

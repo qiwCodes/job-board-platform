@@ -1,14 +1,18 @@
 const toneMap = {
-  active: 'bg-emerald-100 text-emerald-700',
-  pending: 'bg-amber-100 text-amber-700',
-  reviewed: 'bg-sky-100 text-sky-700',
-  interview: 'bg-violet-100 text-violet-700',
-  rejected: 'bg-rose-100 text-rose-700',
-  hired: 'bg-emerald-100 text-emerald-700',
+  active: 'bg-green-100 text-green-800',
+  draft: 'bg-gray-100 text-gray-700',
+  closed: 'bg-red-100 text-red-700',
+  pending: 'bg-yellow-100 text-yellow-800',
+  reviewed: 'bg-blue-100 text-blue-800',
+  interview: 'bg-purple-100 text-purple-800',
+  rejected: 'bg-red-100 text-red-800',
+  hired: 'bg-green-100 text-green-800',
 };
 
 const labelMap = {
   active: 'Active',
+  draft: 'Draft',
+  closed: 'Closed',
   pending: 'Pending',
   reviewed: 'Reviewed',
   interview: 'Interview',
@@ -18,11 +22,11 @@ const labelMap = {
 
 export default function StatusBadge({ status }) {
   const normalizedStatus = String(status || '').toLowerCase();
-  const tone = toneMap[normalizedStatus] || 'bg-slate-100 text-slate-700';
+  const tone = toneMap[normalizedStatus] || 'bg-gray-100 text-gray-700';
   const label = labelMap[normalizedStatus] || status || 'Unknown';
 
   return (
-    <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${tone}`}>
+    <span className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${tone}`}>
       {label}
     </span>
   );

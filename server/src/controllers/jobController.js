@@ -1,4 +1,3 @@
-const { validationResult } = require('express-validator');
 const { pool } = require('../config/database');
 
 const ALLOWED_EMPLOYMENT_TYPES = new Set([
@@ -8,19 +7,7 @@ const ALLOWED_EMPLOYMENT_TYPES = new Set([
   'internship',
   'remote',
 ]);
-
-const sendValidationError = (req, res) => {
-  const errors = validationResult(req);
-
-  if (errors.isEmpty()) {
-    return false;
-  }
-
-  return res.status(400).json({
-    success: false,
-    message: errors.array({ onlyFirstError: true })[0].msg,
-  });
-};
+const ALLOWED_JOB_STATUSES = new Set(['active', 'closed', 'draft']);
 
 const parseOptionalNonNegativeInteger = (value, fieldName) => {
   if (value === undefined || value === null || value === '') {
@@ -135,11 +122,7 @@ const validateSalaryRange = (salaryMin, salaryMax) => {
   return null;
 };
 
-const getAllJobs = async (req, res) => {
-  if (sendValidationError(req, res)) {
-    return;
-  }
-
+const getAllJobs = async (req, res, next) => {
   const pageResult = parsePaginationNumber(req.query.page, 1, 'page');
   const limitResult = parsePaginationNumber(req.query.limit, 10, 'limit', 100);
 
@@ -165,11 +148,16 @@ const getAllJobs = async (req, res) => {
   const offset = (page - 1) * limit;
   const search = req.query.search?.trim();
   const location = req.query.location?.trim();
-  const employmentType = req.query.type?.trim().toLowerCase();
+  const employmentTypes = req.query.type
+    ?.split(',')
+    .map((type) => type.trim().toLowerCase())
+    .filter(Boolean);
   const salaryMin = salaryMinResult.value;
   const salaryMax = salaryMaxResult.value;
 
-  if (employmentType && !ALLOWED_EMPLOYMENT_TYPES.has(employmentType)) {
+  if (
+    employmentTypes?.some((employmentType) => !ALLOWED_EMPLOYMENT_TYPES.has(employmentType))
+  ) {
     return res.status(400).json({
       success: false,
       message: 'type is invalid.',
@@ -191,9 +179,9 @@ const getAllJobs = async (req, res) => {
     filters.push(`j.location ILIKE $${params.length}`);
   }
 
-  if (employmentType) {
-    params.push(employmentType);
-    filters.push(`j.employment_type = $${params.length}::emp_type`);
+  if (employmentTypes?.length) {
+    params.push(employmentTypes);
+    filters.push(`j.employment_type = ANY($${params.length}::emp_type[])`);
   }
 
   if (salaryMin !== null) {
@@ -262,19 +250,92 @@ const getAllJobs = async (req, res) => {
       message: 'Jobs retrieved successfully.',
     });
   } catch (error) {
-    console.error('getAllJobs error:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Unable to retrieve jobs at this time.',
-    });
+    return next(error);
   }
 };
 
-const getJobById = async (req, res) => {
-  if (sendValidationError(req, res)) {
-    return;
+const getCompanyJobs = async (req, res, next) => {
+  const limitResult = parsePaginationNumber(req.query.limit, 100, 'limit', 100);
+
+  if (limitResult.error) {
+    return res.status(400).json({
+      success: false,
+      message: limitResult.error,
+    });
   }
 
+  const status = req.query.status?.trim().toLowerCase();
+
+  if (status && !ALLOWED_JOB_STATUSES.has(status)) {
+    return res.status(400).json({
+      success: false,
+      message: 'status is invalid.',
+    });
+  }
+
+  try {
+    const companyProfile = await getCompanyProfileForUser(req.user.id);
+
+    if (!companyProfile) {
+      return res.status(404).json({
+        success: false,
+        message: 'Company profile not found for this user.',
+      });
+    }
+
+    const params = [companyProfile.id];
+    const filters = ['j.company_id = $1'];
+
+    if (status) {
+      params.push(status);
+      filters.push(`j.status = $${params.length}`);
+    }
+
+    params.push(limitResult.value);
+    const whereClause = `WHERE ${filters.join(' AND ')}`;
+
+    const result = await pool.query(
+      `
+        SELECT
+          j.id,
+          j.company_id,
+          j.title,
+          j.description,
+          j.requirements,
+          j.salary_min,
+          j.salary_max,
+          j.location,
+          j.employment_type,
+          j.status,
+          j.created_at,
+          cp.company_name,
+          cp.logo_url,
+          COUNT(a.id)::int AS applicants_count,
+          COUNT(*) FILTER (WHERE a.application_status = 'hired')::int AS hired_count
+        FROM jobs j
+        INNER JOIN company_profiles cp ON cp.id = j.company_id
+        LEFT JOIN applications a ON a.job_id = j.id
+        ${whereClause}
+        GROUP BY j.id, cp.company_name, cp.logo_url
+        ORDER BY j.created_at DESC
+        LIMIT $${params.length}
+      `,
+      params,
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        jobs: result.rows,
+      },
+      message: 'Company jobs retrieved successfully.',
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const getJobById = async (req, res, next) => {
   try {
     const result = await pool.query(
       `
@@ -318,19 +379,11 @@ const getJobById = async (req, res) => {
       message: 'Job retrieved successfully.',
     });
   } catch (error) {
-    console.error('getJobById error:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Unable to retrieve job at this time.',
-    });
+    return next(error);
   }
 };
 
-const createJob = async (req, res) => {
-  if (sendValidationError(req, res)) {
-    return;
-  }
-
+const createJob = async (req, res, next) => {
   const salaryMinResult = parseOptionalNonNegativeInteger(req.body.salary_min, 'salary_min');
   const salaryMaxResult = parseOptionalNonNegativeInteger(req.body.salary_max, 'salary_max');
 
@@ -419,19 +472,11 @@ const createJob = async (req, res) => {
       message: 'Job created successfully.',
     });
   } catch (error) {
-    console.error('createJob error:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Unable to create job at this time.',
-    });
+    return next(error);
   }
 };
 
-const updateJob = async (req, res) => {
-  if (sendValidationError(req, res)) {
-    return;
-  }
-
+const updateJob = async (req, res, next) => {
   try {
     const existingJob = await getOwnedJobById(req.params.id);
 
@@ -551,19 +596,11 @@ const updateJob = async (req, res) => {
       message: 'Job updated successfully.',
     });
   } catch (error) {
-    console.error('updateJob error:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Unable to update job at this time.',
-    });
+    return next(error);
   }
 };
 
-const deleteJob = async (req, res) => {
-  if (sendValidationError(req, res)) {
-    return;
-  }
-
+const deleteJob = async (req, res, next) => {
   try {
     const existingJob = await getOwnedJobById(req.params.id);
 
@@ -591,19 +628,11 @@ const deleteJob = async (req, res) => {
       message: 'Job deleted successfully.',
     });
   } catch (error) {
-    console.error('deleteJob error:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Unable to delete job at this time.',
-    });
+    return next(error);
   }
 };
 
-const getJobApplicants = async (req, res) => {
-  if (sendValidationError(req, res)) {
-    return;
-  }
-
+const getJobApplicants = async (req, res, next) => {
   try {
     const existingJob = await getOwnedJobById(req.params.id);
 
@@ -648,16 +677,13 @@ const getJobApplicants = async (req, res) => {
       message: 'Applicants retrieved successfully.',
     });
   } catch (error) {
-    console.error('getJobApplicants error:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Unable to retrieve applicants at this time.',
-    });
+    return next(error);
   }
 };
 
 module.exports = {
   getAllJobs,
+  getCompanyJobs,
   getJobById,
   createJob,
   updateJob,

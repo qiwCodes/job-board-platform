@@ -126,8 +126,10 @@ export function AuthProvider({ children }) {
         toastOptions={{
           duration: 4000,
           style: {
-            background: '#0f172a',
-            color: '#f8fafc',
+            background: '#ffffff',
+            color: '#111827',
+            border: '1px solid #e5e7eb',
+            boxShadow: '0 10px 25px -12px rgba(15, 23, 42, 0.25)',
           },
         }}
       />
