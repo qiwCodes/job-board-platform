@@ -12,6 +12,7 @@ const notFound = require('./middleware/notFound');
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
+app.set('trust proxy', 1);
 const port = process.env.PORT || 5000;
 const uploadsDirectory = path.resolve(__dirname, '../uploads');
 
